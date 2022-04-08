@@ -388,12 +388,12 @@ public Transaction createTransaction(DepositOperationsTransfer depositOperations
         if (depositOperationsTransfer.getSourceDeposit() == null)
             transaction.setSourceNumber("");
         else
-            transaction.setSourceNumber(depositOperationsTransfer.getSourceDeposit().getNumber());
+            transaction.setSourceNumber(depositOperationsTransfer.getSourceDeposit().getNumber().replace("'",""));
 
         if (depositOperationsTransfer.getDestinationDeposit() == null)
             transaction.setDestinationNumber("");
         else
-            transaction.setDestinationNumber(depositOperationsTransfer.getDestinationDeposit().getNumber());
+            transaction.setDestinationNumber(depositOperationsTransfer.getDestinationDeposit().getNumber().replace("'",""));
         depositService.createTransactionWebRequest(transaction);
         return transaction;
     }
