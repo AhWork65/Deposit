@@ -50,8 +50,14 @@ public class TransferTest {
         depositOperationsTransfer.setSourceDeposit(depositSource);
         depositOperationsTransfer.setDestinationDeposit(depositDestination);
 
-        when(depositRepository.findDepositByNumber(Matchers.any())).thenReturn(depositSource);
-        when(depositRepository.findDepositByNumber(Matchers.any())).thenReturn(depositDestination);
+        when(depositRepository.findById(Matchers.any())).thenAnswer(t -> {
+            Optional<Deposit> customerOptional =Optional.of(depositSource);
+            return  customerOptional;
+        });
+        when(depositRepository.findById(Matchers.any())).thenAnswer(t -> {
+            Optional<Deposit> customerOptional =Optional.of(depositDestination);
+            return  customerOptional;
+        });
 
         doReturn(new Deposit()).when(depositServiceMock).
                 deposit(Matchers.any(),Matchers.any());

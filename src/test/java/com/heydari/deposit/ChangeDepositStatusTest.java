@@ -36,7 +36,7 @@ public class ChangeDepositStatusTest {
         Deposit deposit = new Deposit(1L,"1","Test",DepositStatus.OPEN, DepositType.DEMAND_DEPOSIT , DepositCurrency.RIAL
                 ,new BigDecimal(1000000), null,null,null);
 
-        DepositChangeStatus depositChangeStatus = new DepositChangeStatus(deposit, DepositStatus.ClOSE);
+        DepositChangeStatus depositChangeStatus = new DepositChangeStatus(deposit.getId(), DepositStatus.ClOSE);
 
         when(depositRepository.findById(Matchers.any())).thenAnswer(t -> {
             Optional<Deposit> loanOptional =Optional.of(deposit);

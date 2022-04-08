@@ -15,6 +15,7 @@ import com.heydari.deposit.repository.DepositRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,11 @@ public class DepositService {
     @Autowired
     private DepositOperationsTransfer baseOperationsForWithDarw ;
 
+    @Value("${customerUrl}")
+    private String customerServiceUrl;
+
+    @Value("${transactionUrl}")
+    private String transactionServiceUrl;
 
 //==============================================================================
 private boolean validDeposit(Deposit deposit) {
@@ -83,8 +89,16 @@ private boolean validDeposit(Deposit deposit) {
             throw new DepositCreateException("Customer cannot be empty");
         }
 
-        LOGGER.debug("createDeposit OutPut IS {} ",deposit.toString());
-        return depositRepository.save(deposit);
+        Deposit retDeposit;
+
+        try {
+            retDeposit = depositRepository.save(deposit);
+        }catch (Exception e){
+            LOGGER.error("createDeposit Error :{}", e.getMessage());
+            throw new DepositCreateException(e.getMessage(), e);
+        }
+        LOGGER.debug("createDeposit OutPut IS {} ",retDeposit.toString());
+        return retDeposit;
     }
 //======================================================================================
   public List<Deposit> getAllDeposit(){
@@ -95,31 +109,33 @@ private boolean validDeposit(Deposit deposit) {
 //======================================================================================
 @Transactional(rollbackFor = {Exception.class})
     public Deposit changeDepositStatus(DepositChangeStatus deposit) throws  DepositInternalException {
-    LOGGER.debug("changeDepositStatus INPUT PARAMET IS {} ",(deposit == null) ? " null ":deposit.toString());
+         LOGGER.debug("changeDepositStatus INPUT PARAMET IS {} ",(deposit == null) ? " null ":deposit.toString());
 
         if (deposit == null) {
             LOGGER.error("changeDepositStatus Paramet Not Valid");
             throw new DepositInternalException("Paramet Not Valid");
         }
-        if (!ValidDepositForChange(deposit.getDeposit())) {
+
+        Deposit changDeposit;
+        changDeposit = getDepositById(deposit.getDepositId());
+
+        if (!ValidDepositForChange(changDeposit)) {
             LOGGER.error("changeDepositStatus Paramet Not Valid");
             throw new DepositInternalException("Paramet Not Valid");
         }
 
-        Deposit changDeposit;
-        changDeposit = getDepositById(deposit.getDeposit().getId());
-        if (changDeposit == null) {
-            LOGGER.error("changeDepositStatus Paramet Not Valid");
-            throw new DepositInternalException("Deposit Not Found");
+        if (changDeposit.getStatus().equals(DepositStatus.ClOSE)){
+                LOGGER.error("changeDepositStatus Depasit is closed Cannot changed");
+                throw new DepositInternalException("changeDepositStatus Depasit is closed Cannot changed");
         }
 
-        if (changDeposit.getStatus().equals(deposit.getDepositStatus())){
+        if (changDeposit.getStatus().equals(deposit.getStatus())){
             LOGGER.debug("changeDepositStatus Not Change Status");
-            return deposit.getDeposit();
+            return changDeposit;
         }
 
 
-        changDeposit.setStatus(deposit.getDepositStatus());
+        changDeposit.setStatus(deposit.getStatus());
         depositRepository.save(changDeposit);
         LOGGER.debug("changeDepositStatus chenge Deposit :{]", changDeposit.toString());
         return changDeposit;
@@ -171,11 +187,11 @@ private boolean validDeposit(Deposit deposit) {
 
     getDeposit.setBalance(getDeposit.getBalance().add(depositOperationBase.getPrice()));
     depositRepository.save(getDeposit);
-
-    operations.setPrice(depositOperationBase.getPrice());
-    operations.setSourceDeposit(getDeposit);
-    createTransaction(operations, TransactionStatus.SUCCESSFUL, TransactionsType.DEPOSIT);
-
+    if (!byTransfer) {
+        operations.setPrice(depositOperationBase.getPrice());
+        operations.setSourceDeposit(getDeposit);
+        createTransaction(operations, TransactionStatus.SUCCESSFUL, TransactionsType.DEPOSIT);
+    }
     LOGGER.debug("deposit chenge  :{}", getDeposit.toString());
     return getDeposit;
   }
@@ -204,11 +220,11 @@ private boolean validDeposit(Deposit deposit) {
 
         getDeposit.setBalance(getDeposit.getBalance().subtract(depositOperationBase.getPrice()));
         depositRepository.save(getDeposit);
-
-        operations.setPrice(depositOperationBase.getPrice());
-        operations.setSourceDeposit(getDeposit);
-        createTransaction(operations,TransactionStatus.SUCCESSFUL, TransactionsType.WITHDRAW );
-
+        if (! byTransfer) {
+            operations.setPrice(depositOperationBase.getPrice());
+            operations.setSourceDeposit(getDeposit);
+            createTransaction(operations, TransactionStatus.SUCCESSFUL, TransactionsType.WITHDRAW);
+        }
         LOGGER.debug("Withdraw chenge  :{}", getDeposit.toString());
         return getDeposit;
     }
@@ -250,18 +266,20 @@ private boolean validDeposit(Deposit deposit) {
         LOGGER.error("Bad Parametr SourceDeposit Id Is Null");
         throw new DepositInternalException("Bad Parameter...");
     }
-    if (depositOperationsTransfer.getSourceDeposit().getNumber()== null) {
+    if (depositOperationsTransfer.getSourceDeposit().getId()== null) {
         LOGGER.error("Bad Parametr SourceDeposit Id Is Null");
         throw new DepositInternalException("Bad Parameter...");
     }
 
-    if (depositOperationsTransfer.getDestinationDeposit().getNumber()== null) {
+    if (depositOperationsTransfer.getDestinationDeposit().getId()== null) {
         LOGGER.error("Bad Parametr DestinationDeposit Id Is Null");
         throw new DepositInternalException("Bad Parameter...");
     }
 
-    Deposit getSourceDeposit = depositRepository.findDepositByNumber(depositOperationsTransfer.getSourceDeposit().getNumber());
-    Deposit getDestinationDeposit = depositRepository.findDepositByNumber(depositOperationsTransfer.getDestinationDeposit().getNumber());
+    Deposit getSourceDeposit = getDepositById(depositOperationsTransfer.getSourceDeposit().getId());
+    Deposit getDestinationDeposit = getDepositById(depositOperationsTransfer.getDestinationDeposit().getId());
+    depositOperationsTransfer.setSourceDeposit(getSourceDeposit);
+    depositOperationsTransfer.setDestinationDeposit(getDestinationDeposit);
 
     if (!checkVallidat(getSourceDeposit)) {
         createTransaction(depositOperationsTransfer,TransactionStatus.UNSUCCESSFUL, TransactionsType.TRANSFER );
@@ -277,6 +295,8 @@ private boolean validDeposit(Deposit deposit) {
     DepositOperationsTransfer baseOperationsForDeposit = new DepositOperationsTransfer();
     baseOperationsForDeposit.setSourceDeposit(getSourceDeposit);
     baseOperationsForDeposit.setPrice(depositOperationsTransfer.getPrice());
+    baseOperationsForDeposit.setDestinationDeposit(getDestinationDeposit);
+
     try {
         depositService.withdraw(baseOperationsForDeposit ,true);
     } catch (DepositInternalException e) {
@@ -285,15 +305,16 @@ private boolean validDeposit(Deposit deposit) {
         throw new DepositInternalException("In the transmission operation failed to withdraw" ,e);
     }
 
-    baseOperationsForDeposit.setPrice(depositOperationsTransfer.getPrice());
     baseOperationsForDeposit.setSourceDeposit(getDestinationDeposit);
+
     try {
-        depositService.deposit( baseOperationsForWithDarw, true);
+        depositService.deposit( baseOperationsForDeposit, true);
     } catch (DepositInternalException e) {
         createTransaction(depositOperationsTransfer,TransactionStatus.UNSUCCESSFUL, TransactionsType.TRANSFER );
         LOGGER.error("In the transmission operation failed to Deposit");
         throw new DepositInternalException("Destination Deposit Not Valid..." ,e);
     }
+    createTransaction(depositOperationsTransfer,TransactionStatus.SUCCESSFUL, TransactionsType.TRANSFER );
     return depositOperationsTransfer;
 }
 //======================================================================================
@@ -330,7 +351,7 @@ public List<Customer> getCustomerListByDeposit(Deposit deposit){
     LOGGER.info("getCustomerListByDeposit For Service input parameters is : {}",(deposit == null) ? " null ":deposit.toString());
     List<Customer> customerList = webClient
             .post()
-            .uri("http://127.0.0.1:8091/customerservice/getcustomersbydeposit")
+            .uri(customerServiceUrl+"/customerservice/getcustomersbydeposit")
             .bodyValue(deposit)
             .retrieve()
             .bodyToMono(new ParameterizedTypeReference<List<Customer>>() {})
@@ -345,7 +366,7 @@ public Transaction createTransactionWebRequest(Transaction transaction){
     LOGGER.info("createTransaction For Service input parameters is : {}",(transaction == null) ? " null ":transaction.toString());
     Transaction transactionCreate = webClient
             .post()
-            .uri("http://127.0.0.1:8092/transactionservice/create")
+            .uri(transactionServiceUrl+"/transactionservice/create")
             .bodyValue(transaction)
             .retrieve()
             .bodyToMono(Transaction.class)

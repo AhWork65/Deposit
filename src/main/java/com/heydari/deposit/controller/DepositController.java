@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -33,7 +34,7 @@ public class DepositController {
         try {
             LOGGER.info("createDeposit INPUT PARAMET IS {} ",deposit.toString());
             reDeposit = depositService.createDeposit(deposit);
-        } catch (DepositCreateException e) {
+        } catch (Exception e) {
             LOGGER.error("createDeposit Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
@@ -55,7 +56,7 @@ public class DepositController {
         LOGGER.info("changeDepositStatus Input Status is  {} ",deposit.toString());
         try {
             depositService.changeDepositStatus(deposit);
-        } catch (DepositInternalException e) {
+        } catch (Exception e) {
             LOGGER.error("changeDepositStatus Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
@@ -67,7 +68,7 @@ public class DepositController {
         LOGGER.info("deposit Input Parametr is  {} ",depositOperationBase.toString());
         try {
             depositService.deposit (depositOperationBase, false);
-        } catch (DepositInternalException e) {
+        } catch (Exception e) {
             LOGGER.error("deposit Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
@@ -79,7 +80,7 @@ public class DepositController {
         LOGGER.info("withdraw Input Parametr is  {} ",depositOperationBase.toString());
         try {
             depositService.withdraw (depositOperationBase, false);
-        } catch (DepositInternalException e) {
+        } catch (Exception e) {
             LOGGER.error("withdraw Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
@@ -91,30 +92,30 @@ public class DepositController {
         LOGGER.info("transfer Input Parametr is  {} ",depositOperationsTransfer.toString());
         try {
             depositService.transfer (depositOperationsTransfer);
-        } catch (DepositInternalException e) {
+        } catch (Exception e) {
             LOGGER.error("transfer Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
     }
 //======================================================================================
   @GetMapping("/getbalance/{depositId}")
-    public void getBalance(@PathVariable("depositId") Long id){
+    public BigDecimal getBalance(@PathVariable("depositId") Long id){
       LOGGER.info("getBalance Input Parametr is  {} ",id.toString());
         try {
-            depositService.getBalance (id);
-        } catch (DepositInternalException e) {
+            return depositService.getBalance (id);
+        } catch (Exception e) {
             LOGGER.error("getBalance Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }
     }
 //======================================================================================
-@PostMapping("/getbalansbycustomer")
-    public List<Deposit> getBalansByCustomer (@RequestBody Customer customer){
+@PostMapping("/getdepositsbycustomer")
+    public List<Deposit> getDepositsByCustomer (@RequestBody Customer customer){
     LOGGER.info("getBalansByCustomer Input Parametr is  {} ",customer.toString());
     List<Deposit> depositList = null;
     try {
         depositList = depositService.getAllDepositByCustomer(customer);
-    } catch (DepositInternalException e) {
+    } catch (Exception e) {
         LOGGER.error("getBalansByCustomer Exception IS {} ",e.getMessage());
         throw new DepositBadRequestException(e.getMessage());
     }
@@ -128,7 +129,7 @@ public class DepositController {
     Boolean resBoolean = null;
     try {
         resBoolean = depositService.checkExistsDepositByCustumer(customer);
-    } catch (DepositInternalException e) {
+    } catch (Exception e) {
         LOGGER.error("checkExistsDepositByCustumer Exception IS {} ",e.getMessage());
         throw new DepositBadRequestException(e.getMessage());
     }
@@ -151,7 +152,7 @@ public List<Customer> getCustomerListByDeposit(@RequestBody Deposit deposit) {
         Deposit deposit;
         try {
             deposit =  depositService.getDepositById (id);
-        } catch (DepositInternalException e) {
+        } catch (Exception e) {
             LOGGER.error("getDepositById Exception IS {} ",e.getMessage());
             throw new DepositBadRequestException(e.getMessage());
         }

@@ -10,6 +10,6 @@ import lombok.ToString;
 @NoArgsConstructor
 @ToString
 public class DepositChangeStatus {
-    private Deposit deposit;
-    private DepositStatus depositStatus;
+    private Long depositId;
+    private DepositStatus status;
 }
