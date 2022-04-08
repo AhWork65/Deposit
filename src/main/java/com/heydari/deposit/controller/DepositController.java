@@ -161,9 +161,9 @@ public List<Customer> getCustomerListByDeposit(@RequestBody Deposit deposit) {
     }
 //======================================================================================
 @GetMapping("/getdepositbynumber/{depositNumber}")
-public void getDepositByNumber(@PathVariable("depositNumber") String depositNumber){
+public Deposit getDepositByNumber(@PathVariable("depositNumber") String depositNumber){
       LOGGER.info("getDepositByNumber Input Parametr is  {} ",depositNumber);
-      depositService.getDepositByNumber (depositNumber);
+      return depositService.getDepositByNumber (depositNumber);
 }
 //======================================================================================
 
